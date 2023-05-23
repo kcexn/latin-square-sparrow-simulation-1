@@ -11,10 +11,10 @@ def histogram(times, num_bins, y_height=8.3, x_width=11.7):
     ax.set_title('Distribution of Job Latencies')
     ax.set_xlabel('time')
     ax.set_ylabel('frequency')
-    ax.set_yticks(np.arange(0,1.51,0.1))
-    ax.set_yticks(np.arange(0,1.51,0.02),minor=True)
-    ax.set_xticks(np.arange(0,6.01,1))
-    ax.set_xticks(np.arange(0,6.01,0.2), minor=True)
+    ax.set_yticks(np.arange(0,1.21,0.1))
+    ax.set_yticks(np.arange(0,1.21,0.02),minor=True)
+    ax.set_xticks(np.arange(0,30.01,1))
+    ax.set_xticks(np.arange(0,30.01,0.2), minor=True)
     ax.legend()
     fig.set_figwidth(x_width) #inches
     fig.set_figheight(y_height) #inches
@@ -31,8 +31,8 @@ def generate_latin_square(n):
 if __name__ == '__main__':
     POLICY = 'LatinSquare'
     NUM_SERVERS = 6
-    LATIN_SQUARE_ORDER = 6
-    NUM_LATIN_SQUARE_JOBS = 1000
+    LATIN_SQUARE_ORDER = 2
+    NUM_LATIN_SQUARE_JOBS = 3600*18
     HISTOGRAM = True
 
     sim = Simulation()
@@ -53,15 +53,7 @@ if __name__ == '__main__':
     job_start_times = [job.start_time for job in jobs]
     avg_time_per_job = (max(job_finish_times) - min(job_start_times))/len(jobs)
 
-
-    if POLICY == 'RoundRobin' or POLICY == 'FullRepetition':
-        job_batches = [jobs[LATIN_SQUARE_ORDER*i:LATIN_SQUARE_ORDER*i+(LATIN_SQUARE_ORDER-1)] for i in range(NUM_LATIN_SQUARE_JOBS)]
-        batch_times = [max(job.finish_time - job.start_time for job in batch) for batch in job_batches]
-        avg_batched_latency = sum(batch_times)/len(batch_times)
-
-        sim_data_headings = ['avg job latency', 'avg time per job', 'avg batched latency']
-        sim_data = [f'{avg_job_latency}', f'{avg_time_per_job}', f'{avg_batched_latency}']
-    elif POLICY == 'LatinSquare':
+    if POLICY == 'LatinSquare':
         sim_data_headings = ['avg job latency', 'avg time per job', 'avg task latency']
         sim_data = [f'{avg_job_latency}', f'{avg_time_per_job}', f'{avg_job_latency/LATIN_SQUARE_ORDER}']
 
