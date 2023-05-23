@@ -22,7 +22,8 @@ def histogram(times, num_bins, y_height=8.3, x_width=11.7):
 
 if __name__ == '__main__':
     POLICY = 'LatinSquare'
-    LATIN_SQUARE_ORDER = 6
+    NUM_SERVERS = 6
+    LATIN_SQUARE_ORDER = NUM_SERVERS
 
     sim = Simulation()
     sim.run()
