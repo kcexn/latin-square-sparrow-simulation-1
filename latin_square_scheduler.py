@@ -8,22 +8,32 @@ def histogram(times, num_bins, y_height=8.3, x_width=11.7):
     fig,ax = plt.subplots(1,1)
     ax.hist(job_latencies, bins = num_bins, density=True, cumulative=True, histtype='step', label='cdf')
     ax.hist(job_latencies, bins = num_bins, density=True, histtype='step', label='densities')
-    ax.set_title('Distribution of Average Task Latencies')
+    ax.set_title('Distribution of Job Latencies')
     ax.set_xlabel('time')
     ax.set_ylabel('frequency')
-    ax.set_yticks(np.arange(0,2.51,0.1))
-    ax.set_yticks(np.arange(0,2.51,0.02),minor=True)
-    ax.set_xticks(np.arange(0,5.01,1))
-    ax.set_xticks(np.arange(0,5.01,0.2), minor=True)
+    ax.set_yticks(np.arange(0,1.51,0.1))
+    ax.set_yticks(np.arange(0,1.51,0.02),minor=True)
+    ax.set_xticks(np.arange(0,6.01,1))
+    ax.set_xticks(np.arange(0,6.01,0.2), minor=True)
     ax.legend()
     fig.set_figwidth(x_width) #inches
     fig.set_figheight(y_height) #inches
     plt.show()
 
+
+def generate_latin_square(n):
+    latin_square = [[(i+j)%n for i in range(n)] for j in range(n)]
+    with open('latin_square.txt', 'w') as f:
+        f.write(f'{latin_square}')
+
+
+
 if __name__ == '__main__':
     POLICY = 'LatinSquare'
     NUM_SERVERS = 6
-    LATIN_SQUARE_ORDER = NUM_SERVERS
+    LATIN_SQUARE_ORDER = 6
+    NUM_LATIN_SQUARE_JOBS = 1000
+    HISTOGRAM = True
 
     sim = Simulation()
     sim.run()
@@ -45,7 +55,7 @@ if __name__ == '__main__':
 
 
     if POLICY == 'RoundRobin' or POLICY == 'FullRepetition':
-        job_batches = [jobs[6*i:6*i+5] for i in range(6000)]
+        job_batches = [jobs[LATIN_SQUARE_ORDER*i:LATIN_SQUARE_ORDER*i+(LATIN_SQUARE_ORDER-1)] for i in range(NUM_LATIN_SQUARE_JOBS)]
         batch_times = [max(job.finish_time - job.start_time for job in batch) for batch in job_batches]
         avg_batched_latency = sum(batch_times)/len(batch_times)
 
@@ -59,6 +69,7 @@ if __name__ == '__main__':
         writer = csv.writer(f, dialect='excel')
         writer.writerow(sim_data_headings)
         writer.writerow(sim_data)
-        
-    # num_bins=50
-    # histogram(job_latencies, num_bins)
+
+    if HISTOGRAM:
+        num_bins=50
+        histogram(job_latencies, num_bins)
