@@ -1,2 +1,5 @@
 simulation
 .venv
+figures
+experiments
+*.csv
