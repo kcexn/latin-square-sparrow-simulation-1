@@ -94,25 +94,26 @@ if __name__ == '__main__':
     num_experiments = 12
     experiments = [i+1 for i in range(12)]
     parameters = [
-        ('Sparrow', 'RandomJob', '0.053'), 
-        ('Sparrow', 'RandomJob', '0.11'),
-        ('Sparrow', 'RandomJob', '0.55'),
-        ('LatinSquare', 'RandomJob', '0.053'),
-        ('LatinSquare', 'RandomJob', '0.11'),
-        ('LatinSquare', 'RandomJob', '0.55'),
-        ('Sparrow', 'RandomTask', '0.053'),
-        ('Sparrow', 'RandomTask', '0.11'),
-        ('Sparrow', 'RandomTask', '0.55'),
-        ('LatinSquare', 'RandomTask', '0.053'),
-        ('LatinSquare', 'RandomTask', '0.11'),
-        ('LatinSquare', 'RandomTask', '0.55')
+        ('Sparrow', 'RandomJob', '0.06'), 
+        ('Sparrow', 'RandomJob', '0.1'),
+        ('Sparrow', 'RandomJob', '0.5'),
+        ('LatinSquare', 'RandomJob', '0.06'),
+        ('LatinSquare', 'RandomJob', '0.1'),
+        ('LatinSquare', 'RandomJob', '0.5'),
+        ('Sparrow', 'RandomTask', '0.06'),
+        ('Sparrow', 'RandomTask', '0.1'),
+        ('Sparrow', 'RandomTask', '0.5'),
+        ('LatinSquare', 'RandomTask', '0.06'),
+        ('LatinSquare', 'RandomTask', '0.1'),
+        ('LatinSquare', 'RandomTask', '0.5')
     ]
     configs = [configparser.ConfigParser() for _ in range(len(parameters))]
+
     for idx,config in enumerate(configs):
         config.read('./configuration.ini')
         match parameters[idx]:
             case [scheduler_policy, completion_policy, scale]:
-                print(f'{scheduler_policy, completion_policy, scale}')
+                print(f'{idx+1}: {scheduler_policy, completion_policy, scale}')
                 config['Computer.Scheduler']['POLICY'] = scheduler_policy
                 config['Processes.Completion.Task']['POLICY'] = completion_policy
                 config['Processes.Arrival']['SCALE'] = scale
