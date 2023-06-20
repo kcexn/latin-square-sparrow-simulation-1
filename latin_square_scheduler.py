@@ -14,18 +14,32 @@ def histogram(times, num_bins, title, save_file = None, y_height=8.3, x_width=11
     ax.set_xlabel('time')
     ax.set_ylabel('frequencies')
     ax.set_yticks(np.arange(0,1.21,0.1))
-    ax.set_yticks(np.arange(0,1.21,0.02),minor=True)
-    ax.set_xticks(np.arange(0,60.01,1))
-    ax.set_xticks(np.arange(0,60.01,0.2), minor=True)
+    ax.set_yticks(np.arange(0,1.21,0.02), minor=True)
+    ax.set_xticks(np.arange(0,max(times)+0.01,1))
+    ax.set_xticks(np.arange(0,max(times)+0.01,0.2), minor=True)
     ax.legend()
     fig.set_figwidth(x_width) #inches
     fig.set_figheight(y_height) #inches
     if save_file is None:
         plt.show()
     else:
-        plt.savefig(save_file, format='pdf')
+        plt.savefig(save_file)
 
-def experiment(index, configuration, experiment_name = '20 servers'):
+def box_whisker(times, title, save_file = None, y_height = 8.3, x_width = 11.7):
+    """y_height and x_width are both given in inches."""
+    fig,ax = plt.subplots(1,1)
+    ax.boxplot(times)
+    ax.set_ylabel('time')
+    ax.set_yticks(np.arange(0,max(times)+0.01,1))
+    ax.set_yticks(np.arange(0,max(times)+0.01,0.2), minor=True)
+    ax.set_title(title)
+    if save_file is None:
+        plt.show()
+    else:
+        plt.savefig(save_file)
+
+def experiment(index, configuration, experiment_name = '10000 servers'):
+    import math
     HISTOGRAM = True
 
     sim = Simulation(configuration)
@@ -36,6 +50,11 @@ def experiment(index, configuration, experiment_name = '20 servers'):
     job_start_times = [job.start_time for job in jobs]
     job_latencies = [finish_time - start_time for (finish_time, start_time) in zip(job_finish_times,job_start_times)]
     mean_job_latency = sum(job_latencies)/len(job_latencies)
+    sorted_job_latencies = sorted(job_latencies)
+    median_job_latency = sorted_job_latencies[math.ceil(len(sorted_job_latencies)/2)]
+    job_latency_quartile_3 = sorted_job_latencies[math.ceil(len(sorted_job_latencies)*(3/4))]
+    job_latency_quartile_1 = sorted_job_latencies[math.ceil(len(sorted_job_latencies)*(1/4))]
+    job_latency_iqr = job_latency_quartile_3 - job_latency_quartile_1
 
     with open(f'./experiments/{experiment_name}/{index}/data/job-data.csv', 'w', newline='') as f:
         writer = csv.writer(f, dialect='excel')
@@ -48,11 +67,10 @@ def experiment(index, configuration, experiment_name = '20 servers'):
     task_finish_times = [task.finish_time for task in tasks]
     task_start_times = [task.start_time for task in tasks]
     task_latencies = [finish_time - start_time for (finish_time, start_time) in zip(task_finish_times, task_start_times)]
-    mean_task_latency = sum(task_latencies)/len(task_latencies)
 
     with open(f'./experiments/{experiment_name}/{index}/data/task-data.csv', 'w', newline='') as f:
         writer = csv.writer(f, dialect='excel')
-        data_heading = ['job_start_times', 'job_finish_times', 'job_latencies']
+        data_heading = ['task_start_times', 'task_finish_times', 'task_latencies']
         writer.writerow(data_heading)
         data = [[start_time, finish_time, latency] for (start_time, finish_time, latency) in zip(task_start_times, task_finish_times, task_latencies)]
         writer.writerows(data)
@@ -64,17 +82,24 @@ def experiment(index, configuration, experiment_name = '20 servers'):
     servers = [server for server in sim.scheduler.cluster.servers]
     cum_idle_times = [server.cumulative_idle_time for server in servers]
     cum_busy_times = [server.cumulative_busy_time for server in servers]
-    availability = [idle_time/(idle_time+busy_time) for (idle_time, busy_time) in zip(cum_idle_times, cum_busy_times)]
-    mean_availability = sum(availability)/len(availability)
+    mean_availability = sum(cum_idle_times)/(sum(cum_busy_times) + sum(cum_idle_times))
 
     with open(f'./experiments/{experiment_name}/{index}/data/summary-data.csv', 'w', newline='') as f:
         writer = csv.writer(f, dialect='excel')
-        data_heading = ['mean job latency', 'mean task latency']
+        data_heading = [
+            'mean job latency', 
+            'median job latency', 
+            'quartile 3 job latency',
+            'quartile 1 job latency',
+            'job latency iqr'
+        ]
         writer.writerow(data_heading)
-        data = [mean_job_latency, mean_task_latency]
+        data = [mean_job_latency, median_job_latency, job_latency_quartile_3, job_latency_quartile_1, job_latency_iqr]
         writer.writerow(data)
 
-    print(f'experiment {index}: {mean_job_latency}, {mean_task_latency}, {mean_availability}, {total_sim_time}')
+    print(f'experiment {index}: {mean_job_latency}, '
+          +f'{job_latency_quartile_1}, {median_job_latency}, {job_latency_quartile_3}, {job_latency_iqr}, '
+          +f'{mean_availability}, {total_sim_time}')
 
     if HISTOGRAM:
         num_bins=50
@@ -83,44 +108,57 @@ def experiment(index, configuration, experiment_name = '20 servers'):
         num_bins=50
         histogram(task_latencies, num_bins, 'Distribution of Task Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/task_latencies.pdf')
 
-
-def generate_latin_square(n):
-    latin_square = [[(i+j)%n for i in range(n)] for j in range(n)]
-    with open('latin_square.txt', 'w') as f:
-        f.write(f'{latin_square}')
+        box_whisker(job_latencies, f'Experiment {index}: Job Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/job_latencies_box.pdf')
 
 if __name__ == '__main__':
-    experiment_name = '20 servers'
-    num_experiments = 12
-    experiments = [i+1 for i in range(12)]
-    parameters = [
-        ('Sparrow', 'RandomJob', '0.06'), 
-        ('Sparrow', 'RandomJob', '0.1'),
-        ('Sparrow', 'RandomJob', '0.5'),
-        ('LatinSquare', 'RandomJob', '0.06'),
-        ('LatinSquare', 'RandomJob', '0.1'),
-        ('LatinSquare', 'RandomJob', '0.5'),
-        ('Sparrow', 'RandomTask', '0.06'),
-        ('Sparrow', 'RandomTask', '0.1'),
-        ('Sparrow', 'RandomTask', '0.5'),
-        ('LatinSquare', 'RandomTask', '0.06'),
-        ('LatinSquare', 'RandomTask', '0.1'),
-        ('LatinSquare', 'RandomTask', '0.5')
-    ]
-    configs = [configparser.ConfigParser() for _ in range(len(parameters))]
+    from enum import Enum
+    from functools import reduce
+    import itertools
+    import datetime
+    scheduling_policies = ['CompletelyRandom']
+    task_completion_policies = ['RandomJob','RandomTask']
+    job_arrival_policies = ['Erlang','Exponential']
+    num_tasks_per_job = 100
+    class LoadEnum(Enum):
+        """
+        Erlang job arrival policy task arrival scale parameters.
+        multiply by num_tasks_per_job to get the equivalent Exponential job arrival policy
+        scale factor.
+        """
+        HIGH = 0.00012
+        MEDIUM = 0.0002
+        LOW = 0.001
+    task_arrival_scale_factors = [LoadEnum.LOW.value, LoadEnum.MEDIUM.value, LoadEnum.HIGH.value]
 
+    parameters = [
+        scheduling_policies,
+        task_completion_policies,
+        job_arrival_policies,
+        task_arrival_scale_factors
+    ]
+    num_experiments = reduce(
+        lambda x,y: x*y,
+        (len(param) for param in parameters)
+    )
+    experiment_params = [param for param in itertools.product(*parameters)]
+    configs = [configparser.ConfigParser() for _ in range(num_experiments)]
     for idx,config in enumerate(configs):
         config.read('./configuration.ini')
-        match parameters[idx]:
-            case [scheduler_policy, completion_policy, scale]:
-                print(f'{idx+1}: {scheduler_policy, completion_policy, scale}')
+        match experiment_params[idx]:
+            case [scheduler_policy, completion_policy, arrival_policy, task_arrival_scale]:
+                print(f'experiment {idx+1}: scheduler: {scheduler_policy}, servicing: {completion_policy}, arrivals: {arrival_policy}, '
+                      + f'arrival rate: {1/float(task_arrival_scale) if arrival_policy == "Erlang" else 1/(num_tasks_per_job*float(task_arrival_scale))}')
                 config['Computer.Scheduler']['POLICY'] = scheduler_policy
                 config['Processes.Completion.Task']['POLICY'] = completion_policy
-                config['Processes.Arrival']['SCALE'] = scale
+                if arrival_policy == 'Erlang':
+                    config['Processes.Arrival']['SCALE'] = str(task_arrival_scale)
+                else:
+                    config['Processes.Arrival']['SCALE'] = str(num_tasks_per_job*float(task_arrival_scale))
+                config['Processes.Arrival.Job']['POLICY'] = arrival_policy
 
-    processes = [multiprocessing.Process(target=experiment, args=(index, configuration)) for (index,configuration) in zip(experiments,configs)]
-    for process in processes:
-        process.start()
-
-    for process in processes:
-        process.join()
+    start_time = datetime.datetime.now()
+    print(f'start time: {start_time}')
+    with multiprocessing.Pool() as p:
+        p.starmap(experiment, [(idx+1, configs[idx]) for idx in range(num_experiments)])
+    end_time = datetime.datetime.now()
+    print(f'End time: {end_time}. Duration: {end_time - start_time}.')
