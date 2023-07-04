@@ -1,10 +1,12 @@
 from simulation import Simulation
+import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 import csv
 import configparser
 import multiprocessing
 
+matplotlib.set_loglevel("critical")
 def histogram(times, num_bins, title, save_file = None, y_height=8.3, x_width=11.7):
     """y_height and x_widht are both given in inches."""
     fig,ax = plt.subplots(1,1)
@@ -23,7 +25,9 @@ def histogram(times, num_bins, title, save_file = None, y_height=8.3, x_width=11
     if save_file is None:
         plt.show()
     else:
-        plt.savefig(save_file)
+        plt.savefig(f'{save_file}.pdf', format='pdf', bbox_inches = 'tight')
+        plt.savefig(f'{save_file}.eps', format='eps', bbox_inches = 'tight', backend='PS')
+        plt.close()
 
 def box_whisker(times, title, save_file = None, y_height = 8.3, x_width = 11.7):
     """y_height and x_width are both given in inches."""
@@ -36,7 +40,9 @@ def box_whisker(times, title, save_file = None, y_height = 8.3, x_width = 11.7):
     if save_file is None:
         plt.show()
     else:
-        plt.savefig(save_file)
+        plt.savefig(f'{save_file}.pdf', format='pdf', bbox_inches='tight')
+        plt.savefig(f'{save_file}.eps', format='eps', bbox_inches='tight', backend='PS')
+        plt.close()
 
 def experiment(index, configuration, experiment_name = '10000 servers'):
     import math
@@ -79,7 +85,7 @@ def experiment(index, configuration, experiment_name = '10000 servers'):
     sim_start_time = min(task_start_times)
     total_sim_time = sim_finish_time - sim_start_time
 
-    servers = [server for server in sim.scheduler.cluster.servers]
+    servers = [server for server in sim.cluster.servers]
     cum_idle_times = [server.cumulative_idle_time for server in servers]
     cum_busy_times = [server.cumulative_busy_time for server in servers]
     mean_availability = sum(cum_idle_times)/(sum(cum_busy_times) + sum(cum_idle_times))
@@ -103,20 +109,21 @@ def experiment(index, configuration, experiment_name = '10000 servers'):
 
     if HISTOGRAM:
         num_bins=50
-        histogram(job_latencies, num_bins, 'Distribution of Job Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/job_latencies.pdf')
+        histogram(job_latencies, num_bins, 'Distribution of Job Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/job_latencies')
 
         num_bins=50
-        histogram(task_latencies, num_bins, 'Distribution of Task Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/task_latencies.pdf')
+        histogram(task_latencies, num_bins, 'Distribution of Task Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/task_latencies')
 
-        box_whisker(job_latencies, f'Experiment {index}: Job Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/job_latencies_box.pdf')
+        box_whisker(job_latencies, f'Experiment {index}: Job Latencies', save_file=f'./experiments/{experiment_name}/{index}/figures/job_latencies_box')
 
 if __name__ == '__main__':
     from enum import Enum
     from functools import reduce
     import itertools
     import datetime
-    scheduling_policies = ['CompletelyRandom']
-    task_completion_policies = ['RandomJob','RandomTask']
+    scheduling_policies = ['LatinSquare', 'Sparrow', 'RoundRobin', 'CompletelyRandom']
+    # (Correlated, Homogeneous)
+    task_service_time_config = [(True, True), (True, False), (False, True), (False, False)]
     job_arrival_policies = ['Erlang','Exponential']
     num_tasks_per_job = 100
     class LoadEnum(Enum):
@@ -125,14 +132,14 @@ if __name__ == '__main__':
         multiply by num_tasks_per_job to get the equivalent Exponential job arrival policy
         scale factor.
         """
-        HIGH = 0.00012
+        HIGH = 0.0001111111
         MEDIUM = 0.0002
         LOW = 0.001
     task_arrival_scale_factors = [LoadEnum.LOW.value, LoadEnum.MEDIUM.value, LoadEnum.HIGH.value]
 
     parameters = [
         scheduling_policies,
-        task_completion_policies,
+        task_service_time_config,
         job_arrival_policies,
         task_arrival_scale_factors
     ]
@@ -145,20 +152,23 @@ if __name__ == '__main__':
     for idx,config in enumerate(configs):
         config.read('./configuration.ini')
         match experiment_params[idx]:
-            case [scheduler_policy, completion_policy, arrival_policy, task_arrival_scale]:
-                print(f'experiment {idx+1}: scheduler: {scheduler_policy}, servicing: {completion_policy}, arrivals: {arrival_policy}, '
+            case [scheduler_policy, task_service_time_config, arrival_policy, task_arrival_scale]:
+                print(f'experiment {idx+1}: scheduler: {scheduler_policy}, arrivals: {arrival_policy}, '
+                      + f'correlated task servicing: {task_service_time_config[0]}, homogeneous task servicing: {task_service_time_config[1]}, '
                       + f'arrival rate: {1/float(task_arrival_scale) if arrival_policy == "Erlang" else 1/(num_tasks_per_job*float(task_arrival_scale))}')
                 config['Computer.Scheduler']['POLICY'] = scheduler_policy
-                config['Processes.Completion.Task']['POLICY'] = completion_policy
                 if arrival_policy == 'Erlang':
                     config['Processes.Arrival']['SCALE'] = str(task_arrival_scale)
                 else:
                     config['Processes.Arrival']['SCALE'] = str(num_tasks_per_job*float(task_arrival_scale))
                 config['Processes.Arrival.Job']['POLICY'] = arrival_policy
-
+                config['Processes.Completion.Task']['CORRELATED_TASKS'] = str(task_service_time_config[0])
+                config['Processes.Completion.Task']['HOMOGENEOUS_TASKS'] = str(task_service_time_config[1])
     start_time = datetime.datetime.now()
     print(f'start time: {start_time}')
+
     with multiprocessing.Pool() as p:
-        p.starmap(experiment, [(idx+1, configs[idx]) for idx in range(num_experiments)])
+        p.starmap(experiment, [(idx+1, configs[idx]) for idx in range(num_experiments)], 2)
+
     end_time = datetime.datetime.now()
     print(f'End time: {end_time}. Duration: {end_time - start_time}.')
