@@ -6,6 +6,8 @@ import csv
 import configparser
 import multiprocessing
 
+experiment_name = "10000 servers"
+
 matplotlib.set_loglevel("critical")
 def histogram(times, num_bins, title, save_file = None, y_height=8.3, x_width=11.7):
     """y_height and x_widht are both given in inches."""
@@ -44,7 +46,7 @@ def box_whisker(times, title, save_file = None, y_height = 8.3, x_width = 11.7):
         plt.savefig(f'{save_file}.eps', format='eps', bbox_inches='tight', backend='PS')
         plt.close()
 
-def experiment(index, configuration, experiment_name = '10000 servers'):
+def experiment(index, configuration, experiment_name = experiment_name):
     import math
     HISTOGRAM = True
 
@@ -121,6 +123,7 @@ if __name__ == '__main__':
     from functools import reduce
     import itertools
     import datetime
+    import os
     scheduling_policies = ['LatinSquare', 'Sparrow', 'RoundRobin', 'CompletelyRandom']
     # (Correlated, Homogeneous)
     task_service_time_config = [(True, True), (True, False), (False, True), (False, False)]
@@ -147,6 +150,13 @@ if __name__ == '__main__':
         lambda x,y: x*y,
         (len(param) for param in parameters)
     )
+    for i in range(num_experiments):
+        try:
+            os.makedirs(f'experiments/{experiment_name}/{i+1}/data/')
+            os.makedirs(f'experiments/{experiment_name}/{i+1}/figures/')
+        except os.error:
+            if not (os.access(f'experiments/{experiment_name}/{i+1}/data/', os.F_OK) and os.access(f'experiments/{experiment_name}/{i+1}/figures/', os.F_OK)):
+                raise Exception("File error can't make paths, and paths don't exist.")
     experiment_params = [param for param in itertools.product(*parameters)]
     configs = [configparser.ConfigParser() for _ in range(num_experiments)]
     for idx,config in enumerate(configs):
