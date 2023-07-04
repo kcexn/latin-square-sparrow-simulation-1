@@ -4,3 +4,4 @@ figures
 experiments
 *.csv
 *.7z
+__pycache__*
