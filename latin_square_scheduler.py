@@ -177,7 +177,7 @@ if __name__ == '__main__':
     start_time = datetime.datetime.now()
     print(f'start time: {start_time}')
 
-    with multiprocessing.Pool() as p:
+    with multiprocessing.Pool(maxtasksperchild=12) as p:
         p.starmap(experiment, [(idx+1, configs[idx]) for idx in range(num_experiments)], 2)
 
     end_time = datetime.datetime.now()
