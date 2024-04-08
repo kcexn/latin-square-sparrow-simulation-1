@@ -282,8 +282,8 @@ if __name__ == '__main__':
     print(f'start time: {start_time}')
     print(f"experiment index: mean, q1, median, q3, iqr, mean availability, total simulation time")
 
-    with multiprocessing.Pool(maxtasksperchild=12) as p:
-        p.starmap(experiment, [(idx+1, configs[idx]) for idx in range(num_experiments)], 2)
+    with multiprocessing.Pool(maxtasksperchild=1) as p:
+        p.starmap(experiment, [(idx+1, configs[idx]) for idx in range(num_experiments)], 1)
     end_time = datetime.datetime.now()
     print(f'End time: {end_time}. Duration: {end_time - start_time}.')
     
